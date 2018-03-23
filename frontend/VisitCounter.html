@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Visit Counter</title>
+  <script type="text/javascript" src="./bower_components/web3/dist/web3.min.js"></script>
+  <script type="text/javascript" src="./bower_components/jquery/dist/jquery.min.js"></script>
+  <script type="text/javascript">
+  var Web3 = require('web3');
+  var web3 = new Web3();
+  var VisitCounter;
+
+  function accountForEach(element, index, array) {
+    $("#accountList").append(element + "<br>");
+  }
+
+  $(document).ready(function() {
+    // web3.setProvider(new web3.providers.HttpProvider());
+    web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
+    web3.eth.defaultAccount = web3.eth.accounts[0];
+
+    web3.eth.accounts.forEach(accountForEach);
+    //console.log(web3);
+
+    $("#balance").text(web3.eth.getBalance(web3.eth.coinbase).toNumber());
+    var VisitCounterContract = web3.eth.contract([
+      {
+        "inputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "name": "_name",
+            "type": "string"
+          }
+        ],
+        "name": "visit",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [],
+        "name": "viewAllVisitorAddresses",
+        "outputs": [
+          {
+            "name": "",
+            "type": "address[]"
+          }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [],
+        "name": "viewTotalVisit",
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ]);
+    VisitCounter = VisitCounterContract.at('0xef416fd0c36ec7b9009143efc2a750d0cbf4ca4e');
+
+    setTotalVisitCount();
+    setTotalVisitedAccountList();
+  });
+
+  function watchBalance() {
+    var coinbase = web3.eth.coinbase;
+    var originalBalance = web3.eth.getBalance(coinbase).toNumber();
+    document.getElementById('coinbase').innerText = 'coinbase: ' + coinbase;
+    document.getElementById('original').innerText = ' original balance: ' + originalBalance + '    watching...';
+    web3.eth.filter('latest').watch(function() {
+      var currentBalance = web3.eth.getBalance(coinbase).toNumber();
+      document.getElementById("current").innerText = 'current: ' + currentBalance;
+      document.getElementById("diff").innerText = 'diff:    ' + (currentBalance - originalBalance);
+
+      setTotalVisitCount();
+      setTotalVisitedAccountList();
+    });
+  }
+
+  function visit() {
+    var name = $("#name").val();
+    VisitCounter.visit(name);
+  }
+
+  function setTotalVisitCount() {
+    $("#totalVisitCount").text(VisitCounter.viewTotalVisit());
+  }
+
+  function setTotalVisitedAccountList() {
+    $("#totalVisitedAccountList").text(VisitCounter.viewAllVisitorAddresses());
+  }
+</script>
+</head>
+<body>
+  <h1>Account List</h1>
+  <p id="accountList"></p>
+
+  <h1>Coinbase Account Balance</h1>
+  <p id="balance"></p>
+
+  <h1>Coinbase Balance Watch</h1>
+  <button type="button" onClick="watchBalance();">watch balance</button>
+  <div></div>
+  <div id="coinbase"></div>
+  <div id="original"></div>
+  <div id="current"></div>
+  <div id="diff"></div>
+
+  <h1>Visit</h1>
+  <input type="text" id="name"/>
+  <button type="button" onClick="visit();">Visit</button>
+
+
+  <h1>Total Visit Count</h1>
+  <p id="totalVisitCount"></p>
+
+  <h1>Total Visited Account List</h1>
+  <p id="totalVisitedAccountList"></p>
+</body>
+</html>

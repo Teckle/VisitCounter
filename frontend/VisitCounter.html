@@ -5,23 +5,45 @@
   <script type="text/javascript" src="./bower_components/web3/dist/web3.min.js"></script>
   <script type="text/javascript" src="./bower_components/jquery/dist/jquery.min.js"></script>
   <script type="text/javascript">
-  var Web3 = require('web3');
-  var web3 = new Web3();
-  var VisitCounter;
-
+ 
+ 
+ window.addEventListener("load", function() {
+    // Checking if Web3 has been injected by the browser (Mist/MetaMask)
+    if (typeof web3 !== "undefined") {
+      // Use Mist/MetaMask's provider
+      window.web3 = new Web3(web3.currentProvider);
+    } else {
+      console.log("No web3? You should consider trying MetaMask!");
+      // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
+      web3 = new Web3(
+        new Web3.providers.HttpProvider("https://localhost:8545")
+      );
+    }
+});
+ 
   function accountForEach(element, index, array) {
     $("#accountList").append(element + "<br>");
   }
 
+
   $(document).ready(function() {
-    // web3.setProvider(new web3.providers.HttpProvider());
-    web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
+
+//     web3.setProvider(new web3.providers.HttpProvider());
+//     web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
     web3.eth.defaultAccount = web3.eth.accounts[0];
 
     web3.eth.accounts.forEach(accountForEach);
     //console.log(web3);
 
-    $("#balance").text(web3.eth.getBalance(web3.eth.coinbase).toNumber());
+	web3.eth.getCoinbase(function(err, account) {
+    	var coinbase = account;
+    	document.getElementById('coinbase').innerText = 'coinbase: ' + coinbase;
+    	web3.eth.getBalance(coinbase, (err, balance) => {
+	  	  document.getElementById('original').innerText = ' original balance: ' + balance.toNumber() + '    watching...';
+	    });
+    });
+
+//     $("#balance").text(web3.eth.getBalance(web3.eth.coinbase).toNumber());
     var VisitCounterContract = web3.eth.contract([
       {
         "inputs": [],
@@ -72,38 +94,57 @@
         "type": "function"
       }
     ]);
-    VisitCounter = VisitCounterContract.at('0xef416fd0c36ec7b9009143efc2a750d0cbf4ca4e');
+    VisitCounter = VisitCounterContract.at('0x924BE7cb656c8D348AC392D35Cc3052cDA45Ff90');
 
     setTotalVisitCount();
     setTotalVisitedAccountList();
   });
 
   function watchBalance() {
-    var coinbase = web3.eth.coinbase;
-    var originalBalance = web3.eth.getBalance(coinbase).toNumber();
-    document.getElementById('coinbase').innerText = 'coinbase: ' + coinbase;
-    document.getElementById('original').innerText = ' original balance: ' + originalBalance + '    watching...';
-    web3.eth.filter('latest').watch(function() {
-      var currentBalance = web3.eth.getBalance(coinbase).toNumber();
-      document.getElementById("current").innerText = 'current: ' + currentBalance;
-      document.getElementById("diff").innerText = 'diff:    ' + (currentBalance - originalBalance);
 
-      setTotalVisitCount();
-      setTotalVisitedAccountList();
+  var filter =   web3.eth.filter('latest');
+  filter.watch(function(error, log) {
+  if (!error)
+    console.log(log);
+    
+    web3.eth.getCoinbase(function(err, account) {
+    	var coinbase = account;
+    	document.getElementById('coinbase').innerText = 'coinbase: ' + coinbase;
+    	web3.eth.getBalance(coinbase, (err, balance) => {
+	  	  document.getElementById('original').innerText = ' original balance: ' + balance.toNumber() + '    watching...';
+	    });
     });
+    setTotalVisitCount();
+    setTotalVisitedAccountList();
+   });
+//     document.getElementById('coinbase').innerText = 'coinbase: ' + coinbase;
+ //    web3.eth.filter('latest').watch(function() {
+//       var currentBalance = web3.eth.getBalance(coinbase).toNumber();
+//       document.getElementById("current").innerText = 'current: ' + currentBalance;
+//       document.getElementById("diff").innerText = 'diff:    ' + (currentBalance - originalBalance);
+// 
+//       setTotalVisitCount();
+//       setTotalVisitedAccountList();
+//     });
   }
 
   function visit() {
     var name = $("#name").val();
-    VisitCounter.visit(name);
+    VisitCounter.visit(name, (err,res) => {
+    });
   }
 
   function setTotalVisitCount() {
-    $("#totalVisitCount").text(VisitCounter.viewTotalVisit());
+  VisitCounter.viewTotalVisit((err,res) => {
+	    $("#totalVisitCount").text(res);  	
+  });
+
   }
 
   function setTotalVisitedAccountList() {
-    $("#totalVisitedAccountList").text(VisitCounter.viewAllVisitorAddresses());
+  VisitCounter.viewAllVisitorAddresses((err,res) => {
+	$("#totalVisitedAccountList").text(res);
+  });
   }
 </script>
 </head>
